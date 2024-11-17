@@ -2,6 +2,14 @@
 
 This template should help get you started developing with Vue 3 in Vite.
 
+## important notice
+
+这个是专门用来调试开发的库，直接正常前端开发，用 `yarn run build` 打包
+
+打包后生成的dist文件夹，将其复制替换到`vsagilenew`的`media`中的同名文件夹中
+
+然后在`vsagilenew`项目中用`F5`运行即可
+
 ## Recommended IDE Setup
 
 [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).

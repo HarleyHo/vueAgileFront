@@ -13,6 +13,24 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+      },
+      output: {
+        format: 'es',
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+      },
+    },
+    target: 'esnext', // Use modern JavaScript features for compatibility with Webview
+    minify: 'esbuild', // Minify with esbuild for smaller bundle size
+    cssCodeSplit: false, // Ensure CSS is not split into separate files for better compatibility with Webview
+    assetsInlineLimit: 0, // Disable inlining of assets to avoid content size limits in Webview
+  },
   server: {
     proxy: {
       '/api': {
@@ -22,4 +40,5 @@ export default defineConfig({
       },
     },
   },
+  base: './', // Set base path to './' to ensure relative paths for VSCode Webview compatibility
 })

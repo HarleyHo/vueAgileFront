@@ -2,7 +2,7 @@
  * @Author: zyg0121 zhouyiguo2012@qq.com
  * @Date: 2024-11-17 22:46:40
  * @LastEditors: zyg0121 zhouyiguo2012@qq.com
- * @LastEditTime: 2024-11-17 23:29:47
+ * @LastEditTime: 2024-11-18 02:49:03
  * @FilePath: \vueAgileFront\src\axios.js
  * @Description:
  *
@@ -10,8 +10,12 @@
  */
 import axios from 'axios'
 
+// 根据运行环境动态设置 baseURL
+const isWebview = window.location.origin.startsWith('vscode-webview://')
+const baseURL = isWebview ? 'http://localhost:8080' : '/api'
+
 const instance = axios.create({
-  baseURL: '/api',
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
