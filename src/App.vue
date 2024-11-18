@@ -2,7 +2,7 @@
  * @Author: zyg0121 zhouyiguo2012@qq.com
  * @Date: 2024-11-18 13:07:49
  * @LastEditors: zyg0121 zhouyiguo2012@qq.com
- * @LastEditTime: 2024-11-18 15:12:24
+ * @LastEditTime: 2024-11-18 22:03:13
  * @FilePath: \vueAgileFront\src\App.vue
  * @Description:
  *
@@ -17,9 +17,7 @@
           <el-aside width="200px">
             <el-menu :default-active="activeName" @select="handleSelect">
               <el-menu-item index="About">
-                <el-icon>
-                  <document />
-                </el-icon>
+                <el-icon><HomeFilled /></el-icon>
                 <span>About</span>
               </el-menu-item>
               <el-menu-item index="Project">
@@ -27,6 +25,10 @@
                   <setting />
                 </el-icon>
                 <span>Project</span>
+              </el-menu-item>
+              <el-menu-item index="Kanban">
+                <el-icon><Edit /></el-icon>
+                <span>Kanban</span>
               </el-menu-item>
             </el-menu>
           </el-aside>
@@ -41,15 +43,16 @@
 
 <script>
 import navHeader from '@/components/navHeader.vue'
-import HomePage from '@/components/views/HomePage.vue'
 import AboutPage from '@/components/views/AboutPage.vue'
 import ProjectPage from '@/components/views/ProjectPage.vue'
+import KanbanBoard from '@/components/kanban/KanbanBoard.vue';
+
 export default {
   components: {
     navHeader,
-    HomePage,
     AboutPage,
     ProjectPage,
+    KanbanBoard,
   },
   data() {
     return {
@@ -65,7 +68,16 @@ export default {
   },
   computed: {
     activeComponent() {
-      return this.activeName === 'About' ? 'AboutPage' : 'ProjectPage'
+      switch (this.activeName) {
+        case 'About':
+          return 'AboutPage';
+        case 'Project':
+          return 'ProjectPage';
+        case 'Kanban':
+          return 'KanbanBoard';
+        default:
+          return 'AboutPage';
+      }
     },
   },
   methods: {
