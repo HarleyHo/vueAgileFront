@@ -8,7 +8,7 @@ This template should help get you started developing with Vue 3 in Vite.
 
 需要在vscode中查看时，用 `yarn run build` 打包
 
-打包后生成的dist文件夹，将其复制替换到 `vsagilenew`的 `media`中的同名文件夹中
+打包后生成的dist文件夹，将其复制替换到 `[vsagilenew](https://github.com/zyg0121/vsagilenew)`的 `media`中的同名文件夹中
 
 然后在 `vsagilenew`项目中用 `F5`运行即可
 
