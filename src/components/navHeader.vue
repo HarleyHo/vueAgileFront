@@ -10,6 +10,7 @@
         <el-button type="primary" @click="login">Login</el-button>
         <el-button type="success" @click="register">Register</el-button>
       </template>
+      
       <el-switch
         v-model="isDarkMode"
         @change="toggleDarkMode"

@@ -1,8 +1,8 @@
 <!--
  * @Author: zyg0121 zhouyiguo2012@qq.com
- * @Date: 2024-11-10 20:19:16
+ * @Date: 2024-11-18 13:07:49
  * @LastEditors: zyg0121 zhouyiguo2012@qq.com
- * @LastEditTime: 2024-11-17 20:39:17
+ * @LastEditTime: 2024-11-18 15:12:24
  * @FilePath: \vueAgileFront\src\App.vue
  * @Description:
  *
@@ -10,25 +10,51 @@
 -->
 <template>
   <div :class="[isDarkMode ? 'dark' : 'light']">
-    <el-header><navHeader /></el-header>
-    <!-- 导航栏 -->
-
-    <el-main>
-      <router-view />
-    </el-main>
-    <!-- 渲染路由页面 -->
+    <div class="common-layout">
+      <el-container>
+        <el-header><navHeader /></el-header>
+        <el-container>
+          <el-aside width="200px">
+            <el-menu :default-active="activeName" @select="handleSelect">
+              <el-menu-item index="About">
+                <el-icon>
+                  <document />
+                </el-icon>
+                <span>About</span>
+              </el-menu-item>
+              <el-menu-item index="Project">
+                <el-icon>
+                  <setting />
+                </el-icon>
+                <span>Project</span>
+              </el-menu-item>
+            </el-menu>
+          </el-aside>
+          <el-main>
+            <component :is="activeComponent" />
+          </el-main>
+        </el-container>
+      </el-container>
+    </div>
   </div>
 </template>
 
 <script>
 import navHeader from '@/components/navHeader.vue'
+import HomePage from '@/components/views/HomePage.vue'
+import AboutPage from '@/components/views/AboutPage.vue'
+import ProjectPage from '@/components/views/ProjectPage.vue'
 export default {
   components: {
     navHeader,
+    HomePage,
+    AboutPage,
+    ProjectPage,
   },
   data() {
     return {
       isDarkMode: localStorage.getItem('darkMode') === 'true', // 从 localStorage 获取初始模式
+      activeName: 'About',
     }
   },
   provide() {
@@ -36,6 +62,11 @@ export default {
       isDarkMode: this.isDarkMode,
       toggleDarkMode: this.toggleDarkMode,
     }
+  },
+  computed: {
+    activeComponent() {
+      return this.activeName === 'About' ? 'AboutPage' : 'ProjectPage'
+    },
   },
   methods: {
     toggleDarkMode() {
@@ -50,6 +81,10 @@ export default {
         document.body.classList.add('light')
         document.body.classList.remove('dark')
       }
+
+    },
+    handleSelect(key) {
+      this.activeName = key
     },
   },
   mounted() {
@@ -74,4 +109,25 @@ body.dark {
   background-color: #121212;
   color: #fff;
 }
+
+/* 夜间模式和日间模式下针对 el-menu 的样式 */
+body.light .el-menu {
+  background-color: #ffffff;
+  color: #000;
+}
+
+body.dark .el-menu {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+/* 菜单项的选中样式 */
+body.light .el-menu-item.is-active {
+  background-color: #f0f0f0;
+}
+
+body.dark .el-menu-item.is-active {
+  background-color: #333333;
+}
+
 </style>
