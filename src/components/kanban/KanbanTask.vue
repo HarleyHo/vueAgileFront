@@ -4,14 +4,14 @@
  * @LastEditors: zyg0121 zhouyiguo2012@qq.com
  * @LastEditTime: 2024-11-09 16:42:35
  * @FilePath: \vsAgileFront\src\webview\components\KanbanTask.vue
- * @Description:
- *
- * Copyright (c) 2024 by yiguo, All Rights Reserved.
+ * @Description: 
+ * 
+ * Copyright (c) 2024 by yiguo, All Rights Reserved. 
 -->
 <template>
   <el-card :class="taskClass" shadow="hover" class="kanban-task">
     <!-- delete task button -->
-    <el-button
+    <el-button 
       type="danger"
       size="default"
       circle
@@ -21,7 +21,7 @@
     >
       <el-icon><Close /></el-icon>
     </el-button>
-
+    
 
     <template #header>
       <!-- title display -->
@@ -68,7 +68,7 @@
         </div>
       </div>
     </template>
-
+    
 
     <div class="card-body">
       <!-- content input -->
@@ -135,7 +135,7 @@
             </div>
           </div>
         </div>
-
+        
         <!-- add item button -->
         <el-button
           type="primary"
@@ -156,7 +156,7 @@
       <div class="card-footer">
         <div class="footer-icons">
           <!-- priority dropdown -->
-          <el-dropdown
+          <el-dropdown 
             v-model="task.priority"
             trigger="click"
             @command="handlepriorityChange"
@@ -198,10 +198,10 @@
                 <el-dropdown-item divided disabled>
                   <div class="assignee-group-title">Assigned Members</div>
                 </el-dropdown-item>
-
-                <el-dropdown-item
-                  v-for="user in assignedUsers"
-                  :key="user.id"
+                
+                <el-dropdown-item 
+                  v-for="user in assignedUsers" 
+                  :key="user.id" 
                   :command="user.id"
                 >
                   <div class="assignee-item">
@@ -222,9 +222,9 @@
                   </div>
                 </el-dropdown-item>
 
-                <el-dropdown-item
-                  v-for="user in unassignedUsers"
-                  :key="user.id"
+                <el-dropdown-item 
+                  v-for="user in unassignedUsers" 
+                  :key="user.id" 
                   :command="user.id"
                 >
                   <div class="assignee-item">
@@ -235,7 +235,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-        </div>
+        </div>  
 
         <!-- due time picker -->
         <div class="date-picker">
@@ -354,7 +354,7 @@ export default {
     // unassigned users
     unassignedUsers() {
       if (!this.task.assignees) return this.availableUsers
-      return this.availableUsers.filter(user =>
+      return this.availableUsers.filter(user => 
         !this.task.assignees.some(assigned => assigned.id === user.id)
       )
     },
@@ -383,7 +383,7 @@ export default {
       if (this.hasEditingItem) {
         return
       }
-
+      
       const newItem = {
         text: '',
         isEditing: true,
@@ -391,7 +391,7 @@ export default {
         originalText: ''
       }
       this.task.listItems.push(newItem)
-
+      
       // outside listener
       this.$nextTick(() => {
         const index = this.task.listItems.length - 1
@@ -466,7 +466,7 @@ export default {
       this.isEditingTitle = true
       this.editingTitle = this.task.title
       this.originalTitle = this.task.title
-
+      
       // set outside listener
       this.setupClickOutsideListener(() => {
         if (this.task.isNew) {
@@ -507,10 +507,10 @@ export default {
     },
     setupClickOutsideListener(callback) {
       this.removeClickOutsideListener()
-
+      
       this.clickOutsideHandler = (event) => {
         const cardEl = this.$el
-        if (!cardEl.contains(event.target) &&
+        if (!cardEl.contains(event.target) && 
             !event.target.closest('.el-dropdown-menu') &&
             !event.target.closest('.el-picker-panel')) {
           callback()
@@ -564,7 +564,7 @@ export default {
 .delete-button :deep(.el-icon) { font-size: 16px; color: #909399; }
 .delete-button:hover :deep(.el-icon) { transform: scale(1.1); color: #ff4d4f; }
 
-/* priority icon */
+/* priority icon */ 
 .priority-icon { cursor: pointer; font-size: 16px; color: #909399; transition: color 0.3s;}
 .priority-icon:hover { transform: scale(1.1); color: #409EFF;}
 .priority-icon--normal { color: #67C23A; }
