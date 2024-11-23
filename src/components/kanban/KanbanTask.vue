@@ -344,8 +344,10 @@ export default {
     },
     // assigned users
     assignedUsers() {
-      if (!this.task.assignees) return []
-      return this.task.assignees
+      if (!this.task.assignees?.length) return [];
+      // 从 availableUsers 中获取完整的用户信息
+      const assignedUser = this.availableUsers.find(u => u.id === this.task.assignees[0].id);
+      return assignedUser ? [assignedUser] : [];
     },
     // unassigned users
     unassignedUsers() {
@@ -442,21 +444,14 @@ export default {
     },
     handleAssigneeChange(command) {
       if (command === 'unassign') {
-        this.task.assignees = []
+        this.task.assignees = [];
       } else {
-        const userId = command
-        const user = this.availableUsers.find(u => u.id === userId)
-        if (!this.task.assignees) {
-          this.task.assignees = []
-        }
-        const existingIndex = this.task.assignees.findIndex(a => a.id === userId)
-        if (existingIndex >= 0) {
-          this.task.assignees.splice(existingIndex, 1)
-        } else {
-          this.task.assignees.push(user)
-        }
+        const userId = command;
+        const user = this.availableUsers.find(u => u.id === userId);
+        // 只允许单个指派人
+        this.task.assignees = [user];
       }
-      this.$emit('save', this.task)
+      this.$emit('save', this.task);
     },
     startTitleEdit() {
       this.isEditingTitle = true
