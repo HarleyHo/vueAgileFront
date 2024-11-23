@@ -257,6 +257,7 @@
 <script>
 import { Close, Flag, Delete, Plus, Edit, CircleCheck, CircleClose, User, Check } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import axios from 'axios'
 
 export default {
   components: {
@@ -302,23 +303,18 @@ export default {
         }
       ],
       // available users table
-      availableUsers: [
-        { id: 1, name: 'Alice', role: 'Develop' },
-        { id: 2, name: 'Bob', role: 'Test' },
-        { id: 3, name: 'Carlie', role: 'Product' },
-        { id: 4, name: 'David', role: 'Design' },
-        { id: 5, name: 'Eve', role: 'Develop' }
-      ],
+      availableUsers: [],
       isEditingTitle: false,
       editingTitle: '',
       originalTitle: '',
       clickOutsideHandler: null,
     }
   },
-  created() {
+  async created() {
     if (!this.task.listItems) {
       this.task.listItems = []
     }
+    await this.fetchUsers()
   },
   computed: {
     // task class choice
@@ -522,6 +518,19 @@ export default {
       if (this.clickOutsideHandler) {
         document.removeEventListener('mousedown', this.clickOutsideHandler)
         this.clickOutsideHandler = null
+      }
+    },
+    async fetchUsers() {
+      try {
+        const response = await axios.get('/user/getAll')
+        this.availableUsers = response.data.map(user => ({
+          id: user.id,
+          name: user.name || user.nickname,
+          role: user.role
+        }))
+      } catch (error) {
+        console.error('获取用户列表失败:', error)
+        ElMessage.error('获取用户列表失败')
       }
     }
   },
