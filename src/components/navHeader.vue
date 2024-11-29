@@ -172,8 +172,8 @@ export default {
       this.$message.success('You have logged out successfully!')
     },
     toggleDarkMode() {
-      this.isDarkMode = !this.isDarkMode
-      localStorage.setItem('darkMode', this.isDarkMode)
+      // this.isDarkMode = !this.isDarkMode
+      // localStorage.setItem('darkMode', this.isDarkMode)
       if (this.isDarkMode) {
         document.body.classList.add('dark')
         document.body.classList.remove('light')

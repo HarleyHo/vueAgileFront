@@ -1,25 +1,18 @@
-<!--
- * @Author: zyg0121 zhouyiguo2012@qq.com
- * @Date: 2024-11-18 14:14:52
- * @LastEditors: zyg0121 zhouyiguo2012@qq.com
- * @LastEditTime: 2024-11-29 10:09:47
- * @FilePath: \vueAgileFront\src\components\views\ProjectPage.vue
- * @Description:
- *
- * Copyright (c) 2024 by yiguo, All Rights Reserved.
--->
 <template>
   <div class="project-management">
+    <div v-if="selectedProjectId">
+      <h2>Selected Project: {{ getSelectedProjectName() }}</h2>
+    </div>
     <el-row :gutter="20">
       <el-col :span="8" v-for="project in projects" :key="project.projectId">
         <el-card
           shadow="hover"
           class="project-card"
-          @click="goToDetail(project.projectId)"
+          @click="selectProject(project.projectId)"
         >
           <div>
             <h3>{{ project.projectName }}</h3>
-            <p><strong>PM ID:</strong> {{ project.projectPmId }}</p>
+            <!-- <p><strong>PM ID:</strong> {{ project.projectPmId }}</p> -->
             <p><strong>Description:</strong> {{ project.projectDesc }}</p>
             <p><strong>Start:</strong> {{ project.projectStartTime }}</p>
             <p><strong>End:</strong> {{ project.projectEndTime }}</p>
@@ -37,7 +30,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from "@/axios.js";
 import { ElMessage } from "element-plus";
 
 export default {
@@ -45,15 +38,26 @@ export default {
   data() {
     return {
       projects: [], // 存储项目数据
+      selectedProjectId: "", // 选中的项目 ID
     };
   },
   methods: {
     // 获取项目数据
     async fetchProjects() {
       try {
-        const response = await axios.get("/api/project");
+        const response = await axios.get("/project", {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
         if (response.data.state === 200) {
           this.projects = response.data.data.projects;
+
+          // 默认选择第一个项目
+          if (this.projects.length > 0) {
+            this.selectedProjectId = this.projects[0].projectId;
+            localStorage.setItem("selectedProjectId", this.selectedProjectId);
+          }
         } else {
           ElMessage.error("Failed to fetch projects");
         }
@@ -69,9 +73,21 @@ export default {
     getStatusType(status) {
       return status === 1 ? "success" : "warning";
     },
-    // 跳转到详情页
-    goToDetail(projectId) {
-      this.$router.push({ name: "ProjectDetail", params: { id: projectId } });
+    // 根据项目 ID 获取项目名称
+    getSelectedProjectName() {
+      const project = this.projects.find(
+        (project) => project.projectId === this.selectedProjectId
+      );
+      return project ? project.projectName : "";
+    },
+    // 选择项目并更新状态
+    selectProject(projectId) {
+      this.selectedProjectId = projectId;
+      localStorage.setItem("selectedProjectId", projectId);
+      // this.$message({
+      //   message: "Selected project with ID: " + projectId,
+      //   type: "success",
+      // });
     },
   },
   mounted() {
