@@ -10,7 +10,7 @@
         <el-button type="primary" @click="login">Login</el-button>
         <el-button type="success" @click="register">Register</el-button>
       </template>
-      
+
       <el-switch
         v-model="isDarkMode"
         @change="toggleDarkMode"
@@ -48,7 +48,7 @@
           </el-form-item>
           <div class="form-register" style="text-align: right">
             <el-button @click="registerDialogVisible = false">Cancel</el-button>
-            <el-button type="primary" @click="registerDialogVisible = false"> Submit </el-button>
+            <el-button type="primary" @click="submitRegister"> Submit </el-button>
           </div>
         </el-form>
       </el-dialog>
@@ -149,6 +149,20 @@ export default {
       // this.$message('Register feature is not available yet. Please check back later.')
       this.registerDialogVisible = true
     },
+    async submitRegister() {
+      try {
+        const response = await axios.post('/auth/register', this.registerForm)
+        if (response.data.state === 200) {
+          this.$message.success(response.data.msg)
+          this.registerDialogVisible = false
+        } else {
+          this.$message.error(response.data.msg)
+        }
+      } catch (error) {
+        console.error(error)
+        this.$message.error('注册失败，请稍后再试')
+      }
+    },
     logout() {
       // Implement logout logic
       this.isLoggedIn = false
@@ -158,6 +172,8 @@ export default {
       this.$message.success('You have logged out successfully!')
     },
     toggleDarkMode() {
+      // this.isDarkMode = !this.isDarkMode
+      // localStorage.setItem('darkMode', this.isDarkMode)
       if (this.isDarkMode) {
         document.body.classList.add('dark')
         document.body.classList.remove('light')

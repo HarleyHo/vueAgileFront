@@ -2,7 +2,7 @@
  * @Author: zyg0121 zhouyiguo2012@qq.com
  * @Date: 2024-11-18 13:07:49
  * @LastEditors: zyg0121 zhouyiguo2012@qq.com
- * @LastEditTime: 2024-11-18 22:03:13
+ * @LastEditTime: 2024-11-29 10:43:35
  * @FilePath: \vueAgileFront\src\App.vue
  * @Description:
  *
@@ -16,10 +16,6 @@
         <el-container>
           <el-aside width="200px">
             <el-menu :default-active="activeName" @select="handleSelect">
-              <el-menu-item index="About">
-                <el-icon><HomeFilled /></el-icon>
-                <span>About</span>
-              </el-menu-item>
               <el-menu-item index="Project">
                 <el-icon>
                   <setting />
@@ -29,6 +25,10 @@
               <el-menu-item index="Kanban">
                 <el-icon><Edit /></el-icon>
                 <span>Kanban</span>
+              </el-menu-item>
+              <el-menu-item index="Admin">
+                <el-icon><HomeFilled /></el-icon>
+                <span>Admin</span>
               </el-menu-item>
             </el-menu>
           </el-aside>
@@ -43,21 +43,22 @@
 
 <script>
 import navHeader from '@/components/navHeader.vue'
-import AboutPage from '@/components/views/AboutPage.vue'
+import AdminPage from '@/components/views/AdminPage.vue'
 import ProjectPage from '@/components/views/ProjectPage.vue'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue';
 
 export default {
   components: {
     navHeader,
-    AboutPage,
+    AdminPage,
     ProjectPage,
     KanbanBoard,
   },
   data() {
     return {
       isDarkMode: localStorage.getItem('darkMode') === 'true', // 从 localStorage 获取初始模式
-      activeName: 'About',
+      activeName: 'Project',
+      userRole: localStorage.getItem('userRole') || '',
     }
   },
   provide() {
@@ -69,14 +70,14 @@ export default {
   computed: {
     activeComponent() {
       switch (this.activeName) {
-        case 'About':
-          return 'AboutPage';
+        case 'Admin':
+          return 'AdminPage';
         case 'Project':
           return 'ProjectPage';
         case 'Kanban':
           return 'KanbanBoard';
         default:
-          return 'AboutPage';
+          return 'AdminPage';
       }
     },
   },
