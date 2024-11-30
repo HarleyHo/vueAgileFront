@@ -31,7 +31,6 @@
             :is-new="task.isNew"
             @delete="deleteTask(task.id)"
             @save="saveTask"
-            @openLink="openLink"
           />
         </template>
       </draggable>
@@ -64,7 +63,7 @@ export default {
     Plus
   },
   props: ['title', 'tasks', 'columnIndex'],
-  emits: ['update:tasks', 'addTask', 'deleteTask', 'saveTask', 'openLink'],
+  emits: ['update:tasks', 'addTask', 'deleteTask', 'saveTask'],
 
   computed: {
     localTasks: {
@@ -89,9 +88,6 @@ export default {
     },
     saveTask(task) {
       this.$emit('saveTask', task);
-    },
-    openLink(link) {
-      this.$emit('openLink', link);
     },
     handleChange(evt) {
       this.$emit('update:tasks', this.localTasks);
