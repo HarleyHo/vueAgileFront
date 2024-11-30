@@ -24,10 +24,9 @@
           :title="column.title"
           v-model:tasks="column.tasks"
           :column-index="colIndex"
-          @addTask="addTask(colIndex)"
-          @deleteTask="deleteTask(colIndex, $event)"
-          @saveTask="saveTask"
-          @openLink="openLink"
+          @addTask="addTask"
+          @deleteTask="deleteTask"
+          @saveTask="updateTask"
           @update:tasks="handleTasksUpdate(colIndex, $event)"
         />
       </template>
@@ -39,29 +38,33 @@
 import { ref, onMounted } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import draggable from 'vuedraggable';
-import axios from 'axios';
+import axios from "@/axios.js";
+import { ElMessage } from 'element-plus';
 
 export default {
   components: { KanbanColumn, draggable },
   setup() {
     const columns = ref([
-      { title: 'To Do', tasks: [], status: 'ready' },
-      { title: 'In Progress', tasks: [], status: 'in-process' },
-      { title: 'Done', tasks: [], status: 'done' }
+      { title: 'To Do', tasks: [], status: '0' },
+      { title: 'In Progress', tasks: [], status: '1' },
+      { title: 'Done', tasks: [], status: '2' }
     ]);
 
-    // 获取所有任务并分类到对应列
+    const selectedProjectId = localStorage.getItem('selectedProjectId');
     const fetchTasks = async () => {
       try {
-        const response = await axios.get('/task');
-        const tasks = response.data;
-        
-        // 清空所有列的任务
+        const response = await axios.get(`/project/${selectedProjectId}/task`, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        // 从 response.data.data.tasks 中提取任务列表
+        const tasks = response.data.data.tasks;
+
         columns.value.forEach(column => column.tasks = []);
         
-        // 将任务分配到对应的列
         tasks.forEach(task => {
-          const column = columns.value.find(col => col.status === task.status);
+          const column = columns.value.find(col => col.status === task.taskStatus.toString());
           if (column) {
             column.tasks.push(transformTaskFromBackend(task));
           }
@@ -72,61 +75,72 @@ export default {
       }
     };
 
-    // 后端数据转前端数据格式
     const transformTaskFromBackend = (backendTask) => ({
-      id: backendTask.id,
-      title: backendTask.name,
-      listItems: backendTask.description ? parseDescription(backendTask.description) : [],
-      assignees: backendTask.charge_user_id ? [{ id: backendTask.charge_user_id }] : [],
-      priority: backendTask.priority,
-      duetime: backendTask.pre_end_date,
-      status: backendTask.status
+      id: backendTask.taskId,
+      title: backendTask.taskTitle,
+      taskDesc: backendTask.taskDesc || '',
+      assignees: backendTask.taskUserId ? [{ id: backendTask.taskUserId }] : [],
+      priority: backendTask.taskPriority,
+      duetime: backendTask.taskPreEndTime,
+      status: backendTask.taskStatus
     });
 
-    // 前端数据转后端数据格式
     const transformTaskToBackend = (frontendTask, status) => ({
-      id: frontendTask.id,
-      name: frontendTask.title,
-      description: frontendTask.listItems.map(item => item.text).join('\n'),
-      charge_user_id: frontendTask.assignees?.[0]?.id || null,
-      status: status,
-      priority: frontendTask.priority || '',
-      pre_end_date: frontendTask.duetime,
-      project_id: 37 // 这里需要根据实际项目ID修改
+      taskId: frontendTask.id,
+      taskTitle: frontendTask.title,
+      taskDesc: frontendTask.taskDesc || '',
+      taskUserId: frontendTask.assignees?.[0]?.id || null,
+      taskStatus: status,
+      taskPriority: frontendTask.priority || '0',
+      taskPreEndTime: frontendTask.duetime,
+      taskEndTime: status === '2' ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
+      taskProjectId: selectedProjectId
     });
-
-    // 解析描述为列表项
-    const parseDescription = (description) => {
-      return description.split('\n').filter(text => text.trim()).map(text => ({
-        text: text.trim(),
-        isEditing: false
-      }));
-    };
 
     const handleTasksUpdate = async (columnIndex, newTasks) => {
-      columns.value[columnIndex].tasks = newTasks;
-      
-      // 如果任务更换了列，需要更新状态
       const status = columns.value[columnIndex].status;
-      for (const task of newTasks) {
-        if (task.status !== status) {
-          task.status = status;
-          await updateTask(task);
+      
+      try {
+        // 检查任务状态是否发生变化
+        for (const task of newTasks) {
+          if (task.status !== status) {
+            // 更新任务状态
+            task.status = status;
+            await updateTask(task);
+          }
         }
+        
+        // 更新列中的任务列表
+        columns.value[columnIndex].tasks = newTasks;
+      } catch (error) {
+        console.error('更新任务状态失败:', error);
+        ElMessage.error('更新任务状态失败');
+        // 如果更新失败，刷新任务列表
+        await fetchTasks();
       }
     };
 
     const addTask = async (columnIndex) => {
       try {
         const newTask = {
-          name: `New Task`,
-          status: columns.value[columnIndex].status,
+          taskTitle: '新任务',
+          taskDesc: '',
+          taskStatus: columns.value[columnIndex].status,
+          taskStartTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          taskPreEndTime: null,
+          taskEndTime: null,
+          taskPriority: '0',
+          taskUserId: null,
+          taskProjectId: selectedProjectId
         };
         
-        const response = await axios.post('/task', newTask);
-        const createdTask = transformTaskFromBackend(response.data);
-        createdTask.isNew = true;
-        
+        const response = await axios.post('/task', newTask, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+
+        const createdTask = transformTaskFromBackend(response.data.data);
         columns.value[columnIndex].tasks.push(createdTask);
       } catch (error) {
         console.error('创建任务失败:', error);
@@ -137,21 +151,45 @@ export default {
     const updateTask = async (task) => {
       try {
         const backendTask = transformTaskToBackend(task, task.status);
-        await axios.put(`/task/${task.id}`, backendTask);
+        console.log("updateTask", backendTask);
+        await axios.put(`/task/${task.id}`, backendTask, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        
+        ElMessage.success('更新任务成功');
+        
+        // 更新本地数据
+        const columnIndex = columns.value.findIndex(col => col.status === task.status);
+        if (columnIndex !== -1) {
+          const taskIndex = columns.value[columnIndex].tasks.findIndex(t => t.id === task.id);
+          if (taskIndex !== -1) {
+            columns.value[columnIndex].tasks[taskIndex] = { ...task };
+          }
+        }
       } catch (error) {
         console.error('更新任务失败:', error);
         ElMessage.error('更新任务失败');
+        await fetchTasks();
       }
     };
 
     const deleteTask = async (columnIndex, taskIndex) => {
       const task = columns.value[columnIndex].tasks[taskIndex];
       try {
-        await axios.delete(`/task/${task.id}`);
+        await axios.delete(`/task/${task.id}`, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        
         columns.value[columnIndex].tasks.splice(taskIndex, 1);
+        ElMessage.success('删除任务成功');
       } catch (error) {
         console.error('删除任务失败:', error);
         ElMessage.error('删除任务失败');
+        await fetchTasks();
       }
     };
 
