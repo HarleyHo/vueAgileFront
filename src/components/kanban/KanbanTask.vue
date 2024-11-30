@@ -53,14 +53,14 @@
 
     <div class="card-body">
       <div class="description-container">
-        <!-- 编辑模式 -->
+        <!-- edit mode -->
         <div v-if="isEditing" class="description-edit-mode">
           <el-input
             type="textarea"
             v-model="taskDescription"
             :rows="3"
             resize="none"
-            placeholder="请输入任务描述"
+            placeholder="Input Task Description"
           />
           <el-button
             type="danger"
@@ -72,18 +72,18 @@
           </el-button>
         </div>
         
-        <!-- 显示模式 -->
+        <!-- display mode -->
         <div v-else class="description-display-mode">
           <div v-if="task.taskDesc" class="description-content">
             {{ task.taskDesc }}
           </div>
           <div v-else class="description-placeholder">
-            点击编辑按钮添加描述
+            Click Edit to Add Description
           </div>
         </div>
       </div>
 
-      <!-- 总编辑按钮区域 -->
+      <!-- edit button -->
       <div class="edit-controls">
         <template v-if="isEditing">
           <el-button
@@ -91,14 +91,14 @@
             size="small"
             @click="saveAll"
           >
-            保存
+            Save
           </el-button>
           <el-button
             type="info"
             size="small"
             @click="cancelEdit"
           >
-            取消
+            Cancel
           </el-button>
         </template>
         <template v-else>
@@ -107,7 +107,7 @@
             size="small"
             @click="startEdit"
           >
-            编辑
+            Edit
           </el-button>
         </template>
       </div>
@@ -151,14 +151,14 @@
             <div class="assignee-trigger">
               <el-icon><User /></el-icon>
               <span class="assignee-name">
-                {{ assigneeName || '未分配' }}
+                {{ assigneeName || 'Not Assigned' }}
               </span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="">
                   <div class="assignee-item">
-                    <span>未分配</span>
+                    <span>Not Assigned</span>
                   </div>
                 </el-dropdown-item>
                 
@@ -194,7 +194,7 @@
 </template>
 
 <script>
-import { Close, Flag, Delete, Plus, Edit, CircleCheck, CircleClose, User, Check } from '@element-plus/icons-vue';
+import { Close, Flag, Delete, Plus, User, Check } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import axios from "@/axios.js";
 
@@ -204,9 +204,6 @@ export default {
     Flag,
     Delete,
     Plus,
-    Edit,
-    CircleCheck,
-    CircleClose,
     User,
     Check
   },
@@ -248,7 +245,7 @@ export default {
       taskDescription: '',
       originalTitle: '',
       originalDescription: '',
-      userList: [], // 存储原始用户数据
+      userList: [],
     }
   },
   async created() {
@@ -283,7 +280,6 @@ export default {
     // assigned users
     assignedUsers() {
       if (!this.task.assignees?.length) return [];
-      // 从 availableUsers 中获取完整的用户信息
       const assignedUser = this.availableUsers.find(u => u.id === this.task.assignees[0].id);
       return assignedUser ? [assignedUser] : [];
     },
@@ -298,7 +294,6 @@ export default {
     isDescriptionChanged() {
       return this.taskDescription !== this.originalDescription
     },
-    // 修改计算属性
     availableUsers() {
       return this.userList.filter(user => user.userRole === 0);
     },
@@ -328,10 +323,8 @@ export default {
     },
     handleAssigneeChange(userId) {
       if (!userId) {
-        // 选择未分配
         this.task.assignees = [];
       } else {
-        // 选择特定用户
         this.task.assignees = [{ id: userId }];
       }
       this.emitSaveTask();
@@ -373,8 +366,8 @@ export default {
           this.userList = response.data.data;
         }
       } catch (error) {
-        console.error('获取用户列表失败:', error);
-        ElMessage.error('获取用户列表失败');
+        console.error('Failed to obtain user list:', error);
+        ElMessage.error('Failed to Obtain User List');
       }
     },
     emitSaveTask() {
@@ -390,14 +383,13 @@ export default {
       this.$emit('save', updatedTask);
     },
     deleteTask() {
-      this.$confirm('确认删除该任务吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      this.$confirm('Are you sure you want to delete this task?', 'Attention', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No',
         type: 'warning'
       }).then(() => {
         this.$emit('delete', this.task.id);
       }).catch(() => {
-        // 取消删除操作
       });
     }
   },
@@ -464,24 +456,19 @@ export default {
 .assignee-trigger:hover .assignee-count { color: #409EFF; }
 .assignee-trigger .el-icon { font-size: 16px; color: #606266; transition: all 0.3s ease; }
 .assignee-name { font-size: 14px; color: #606266; transition: color 0.3s ease; }
-.assignee-count { font-size: 12px; color: #909399; transition: color 0.3s ease; }
-.assignee-role { font-size: 12px; color: #909399; position: relative; padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* assignee dropdown menu */
-.assignee-group-title { font-size: 12px; color: #909399; padding: 0 12px; }
 .assignee-dropdown :deep(.el-dropdown-menu) { min-width: 160px; }
 .assignee-dropdown :deep(.el-dropdown-menu__item.is-disabled) { background-color: #f5f7fa; padding: 5px 0; }
 
 /* disabled */
 .add-item-button.is-disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* 文本框容器样式 */
+/* Textbox container */
 .text-area-container {
   width: 100%;
   margin: 10px 0;
 }
 
-/* 按钮容器样式 */
+/* Button container */
 .text-area-buttons {
   display: flex;
   justify-content: flex-end;
@@ -489,13 +476,12 @@ export default {
   margin-top: 8px;
 }
 
-/* 文本框样式 */
+/* Textbox */
 .text-area-container :deep(.el-textarea__inner) {
   background-color: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
 }
 
-/* 按钮悬停效果 */
 .text-area-buttons .el-button:hover {
   transform: scale(1.1);
 }
@@ -555,7 +541,6 @@ export default {
   display: inline-flex;
 }
 
-/* 添加新的样式 */
 .edit-controls {
   display: flex;
   justify-content: flex-end;
@@ -563,14 +548,7 @@ export default {
   margin-top: 16px;
 }
 
-/* 移除不需要的样式 */
-.assignee-role,
-.assignee-count,
-.assignee-group-title { 
-  display: none; 
-}
-
-/* 简化下拉菜单样式 */
+/* dropdown menu */
 .assignee-dropdown :deep(.el-dropdown-menu) { 
   min-width: 160px; 
 }

@@ -10,39 +10,30 @@
 -->
 <template>
   <div class="kanban-board">
-    <!-- use draggable to drag the columns -->
-    <draggable
-      v-model="columns"
-      :component-data="{ type: 'transition-group' }"
-      item-key="title"
-      class="kanban-columns"
-      :group="{ name: 'columns' }"
-    >
-      <template #item="{ element: column, index: colIndex }">
-        <KanbanColumn
-          :key="colIndex"
-          :title="column.title"
-          v-model:tasks="column.tasks"
-          :column-index="colIndex"
-          @addTask="addTask"
-          @deleteTask="deleteTask"
-          @saveTask="updateTask"
-          @update:tasks="handleTasksUpdate(colIndex, $event)"
-        />
-      </template>
-    </draggable>
+    <div class="kanban-columns">
+      <KanbanColumn
+        v-for="(column, colIndex) in columns"
+        :key="column.title"
+        :title="column.title"
+        v-model:tasks="column.tasks"
+        :column-index="colIndex"
+        @addTask="addTask"
+        @deleteTask="deleteTask"
+        @saveTask="updateTask"
+        @update:tasks="handleTasksStatus(colIndex, $event)"
+      />
+    </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
-import draggable from 'vuedraggable';
 import axios from "@/axios.js";
 import { ElMessage } from 'element-plus';
 
 export default {
-  components: { KanbanColumn, draggable },
+  components: { KanbanColumn },
   setup() {
     const columns = ref([
       { title: 'To Do', tasks: [], status: '0' },
@@ -51,6 +42,7 @@ export default {
     ]);
 
     const selectedProjectId = localStorage.getItem('selectedProjectId');
+    // Obtain task list from backend and fetch to frontend
     const fetchTasks = async () => {
       try {
         const response = await axios.get(`/project/${selectedProjectId}/task`, {
@@ -58,7 +50,6 @@ export default {
             Authorization: localStorage.getItem("token"),
           },
         });
-        // 从 response.data.data.tasks 中提取任务列表
         const tasks = response.data.data.tasks;
 
         columns.value.forEach(column => column.tasks = []);
@@ -70,8 +61,8 @@ export default {
           }
         });
       } catch (error) {
-        console.error('获取任务失败:', error);
-        ElMessage.error('获取任务列表失败');
+        console.error('Failed to obtain task:', error);
+        ElMessage.error('Failed to Obtain Task List');
       }
     };
 
@@ -80,42 +71,43 @@ export default {
       title: backendTask.taskTitle,
       taskDesc: backendTask.taskDesc || '',
       assignees: backendTask.taskUserId ? [{ id: backendTask.taskUserId }] : [],
-      priority: backendTask.taskPriority,
+      priority: backendTask.taskPriority || 'default',
       duetime: backendTask.taskPreEndTime,
-      status: backendTask.taskStatus
+      status: backendTask.taskStatus.toString()
     });
 
-    const transformTaskToBackend = (frontendTask, status) => ({
+    const transformTaskToBackend = (frontendTask) => ({
       taskId: frontendTask.id,
       taskTitle: frontendTask.title,
       taskDesc: frontendTask.taskDesc || '',
       taskUserId: frontendTask.assignees?.[0]?.id || null,
-      taskStatus: status,
+      taskStatus: frontendTask.status,
       taskPriority: frontendTask.priority || 'default',
       taskPreEndTime: frontendTask.duetime,
-      taskEndTime: status === '2' ? new Date().toLocaleString().replaceAll('/', '-') : null,
+      taskEndTime: frontendTask.status === '2' ? new Date().toLocaleString().replaceAll('/', '-') : null,
       taskProjectId: selectedProjectId
     });
 
-    const handleTasksUpdate = async (columnIndex, newTasks) => {
+    // Update task status
+    const handleTasksStatus = async (columnIndex, newTasks) => {
       const status = columns.value[columnIndex].status;
       
       try {
-        // 检查任务状态是否发生变化
+        // Check if the task status has changed
         for (const task of newTasks) {
           if (task.status !== status) {
-            // 更新任务状态
-            task.status = status;
-            await updateTask(task);
+            // Update task status
+            const updatedTask = { ...task, status };
+            await updateTask(updatedTask);
           }
         }
         
-        // 更新列中的任务列表
+        // Update the task list in the column
         columns.value[columnIndex].tasks = newTasks;
       } catch (error) {
-        console.error('更新任务状态失败:', error);
-        ElMessage.error('更新任务状态失败');
-        // 如果更新失败，刷新任务列表
+        console.error('Failed to update task status:', error);
+        ElMessage.error('Failed to Update Task Status');
+        // If the update fails, refresh the task list
         await fetchTasks();
       }
     };
@@ -123,7 +115,7 @@ export default {
     const addTask = async (columnIndex) => {
       try {
         const newTask = {
-          taskTitle: '新任务',
+          taskTitle: 'New Task ',
           taskDesc: '',
           taskStatus: columns.value[columnIndex].status,
           taskStartTime: new Date().toLocaleString().replaceAll('/', '-'),
@@ -139,28 +131,29 @@ export default {
             Authorization: localStorage.getItem("token"),
           },
         });
-
-        const createdTask = transformTaskFromBackend(response.data.data);
-        columns.value[columnIndex].tasks.push(createdTask);
+        // After creating the task, fetch the task list from the backend
+        await fetchTasks();
+        ElMessage.success('Create Task Successfully');
       } catch (error) {
-        console.error('创建任务失败:', error);
-        ElMessage.error('创建任务失败');
+        console.error('Failed to create task:', error);
+        ElMessage.error('Failed to Create Task');
       }
     };
 
     const updateTask = async (task) => {
       try {
-        const backendTask = transformTaskToBackend(task, task.status);
-        console.log("updateTask", backendTask);
+        console.log("updateTask", task);
+        const backendTask = transformTaskToBackend(task);
+        
         await axios.put(`/task/${task.id}`, backendTask, {
           headers: {
             Authorization: localStorage.getItem("token"),
           },
         });
         
-        ElMessage.success('更新任务成功');
+        ElMessage.success('Update Task Successfully');
         
-        // 更新本地数据
+        // Update local data
         const columnIndex = columns.value.findIndex(col => col.status === task.status);
         if (columnIndex !== -1) {
           const taskIndex = columns.value[columnIndex].tasks.findIndex(t => t.id === task.id);
@@ -169,9 +162,9 @@ export default {
           }
         }
       } catch (error) {
-        console.error('更新任务失败:', error);
-        ElMessage.error('更新任务失败');
-        await fetchTasks();
+        console.error('Failed to update task:', error);
+        ElMessage.error('Failed to Update Task');
+        await fetchTasks();  // Refresh the task list
       }
     };
 
@@ -186,10 +179,10 @@ export default {
         });
         
         columns.value[columnIndex].tasks.splice(taskIndex, 1);
-        ElMessage.success('删除任务成功');
+        ElMessage.success('Delete Task Successfully');
       } catch (error) {
-        console.error('删除任务失败:', error);
-        ElMessage.error('删除任务失败');
+        console.error('Failed to delete task:', error);
+        ElMessage.error('Failed to Delete Task');
         await fetchTasks();
       }
     };
@@ -203,7 +196,7 @@ export default {
       addTask, 
       deleteTask, 
       updateTask, 
-      handleTasksUpdate 
+      handleTasksStatus 
     };
   }
 };
