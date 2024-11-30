@@ -29,7 +29,7 @@
           <KanbanTask
             :task="task"
             :is-new="task.isNew"
-            @delete="deleteTask($event)"
+            @delete="deleteTask(task.id)"
             @save="saveTask"
             @openLink="openLink"
           />
@@ -81,8 +81,11 @@ export default {
     addTask() {
       this.$emit('addTask', this.columnIndex);
     },
-    deleteTask(taskIndex) {
-      this.$emit('deleteTask', this.columnIndex, taskIndex);
+    deleteTask(taskId) {
+      const taskIndex = this.localTasks.findIndex(task => task.id === taskId);
+      if (taskIndex !== -1) {
+        this.$emit('deleteTask', this.columnIndex, taskIndex);
+      }
     },
     saveTask(task) {
       this.$emit('saveTask', task);

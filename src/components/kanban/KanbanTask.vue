@@ -151,24 +151,24 @@
             <div class="assignee-trigger">
               <el-icon><User /></el-icon>
               <span class="assignee-name">
-                {{ assigneeName || 'Not Assigned' }}
+                {{ assigneeName || '未分配' }}
               </span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="unassign">
+                <el-dropdown-item command="">
                   <div class="assignee-item">
-                    <span>Not Assigned</span>
+                    <span>未分配</span>
                   </div>
                 </el-dropdown-item>
                 
                 <el-dropdown-item 
                   v-for="user in availableUsers" 
-                  :key="user.id" 
-                  :command="user.id"
+                  :key="user.userId" 
+                  :command="user.userId"
                 >
                   <div class="assignee-item">
-                    <span>{{ user.name }}</span>
+                    <span>{{ user.userNickname || user.userName }}</span>
                   </div>
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -300,20 +300,15 @@ export default {
     },
     // 修改计算属性
     availableUsers() {
-      return this.userList
-        .filter(user => user.userRole === 0)
-        .map(user => ({
-          id: user.userId,
-          name: user.userNickname || user.userName
-        }));
+      return this.userList.filter(user => user.userRole === 0);
     },
     
     assigneeName() {
       if (!this.task.assignees?.[0]?.id) return null;
-      const assignedUser = this.availableUsers.find(
-        user => user.id === this.task.assignees[0].id
+      const assignedUser = this.userList.find(
+        user => user.userId === this.task.assignees[0].id
       );
-      return assignedUser?.name;
+      return assignedUser ? (assignedUser.userNickname || assignedUser.userName) : null;
     }
   },
   methods: {
@@ -329,13 +324,14 @@ export default {
     },
     // normalize the date format
     formatDate(date) {
-      return dayjs(date).format('DD-MM-YYYY HH:mm')
+      return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
     },
-    handleAssigneeChange(command) {
-      if (command === 'unassign') {
+    handleAssigneeChange(userId) {
+      if (!userId) {
+        // 选择未分配
         this.task.assignees = [];
       } else {
-        const userId = command;
+        // 选择特定用户
         this.task.assignees = [{ id: userId }];
       }
       this.emitSaveTask();
@@ -368,13 +364,14 @@ export default {
     },
     async fetchUsers() {
       try {
-        const response = await axios.get('/user/getAll', {
+        const response = await axios.get('/user/getAllUsers', {
           headers: {
             Authorization: localStorage.getItem("token"),
           },
         });
-        console.log("fetchUsers", response.data.data.records);
-        this.userList = response.data.data.records;
+        if (response.data.data) {
+          this.userList = response.data.data;
+        }
       } catch (error) {
         console.error('获取用户列表失败:', error);
         ElMessage.error('获取用户列表失败');
@@ -398,7 +395,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        this.$emit('delete');
+        this.$emit('delete', this.task.id);
       }).catch(() => {
         // 取消删除操作
       });
@@ -582,5 +579,11 @@ export default {
   display: flex;
   align-items: center;
   padding: 5px 12px;
+  cursor: pointer;
+}
+
+.assignee-item:hover {
+  background-color: var(--el-dropdown-menuItem-hover-fill);
+  color: var(--el-dropdown-menuItem-hover-color);
 }
 </style>

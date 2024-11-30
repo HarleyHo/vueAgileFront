@@ -91,9 +91,9 @@ export default {
       taskDesc: frontendTask.taskDesc || '',
       taskUserId: frontendTask.assignees?.[0]?.id || null,
       taskStatus: status,
-      taskPriority: frontendTask.priority || '0',
+      taskPriority: frontendTask.priority || 'default',
       taskPreEndTime: frontendTask.duetime,
-      taskEndTime: status === '2' ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
+      taskEndTime: status === '2' ? new Date().toLocaleString().replaceAll('/', '-') : null,
       taskProjectId: selectedProjectId
     });
 
@@ -126,10 +126,10 @@ export default {
           taskTitle: '新任务',
           taskDesc: '',
           taskStatus: columns.value[columnIndex].status,
-          taskStartTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          taskStartTime: new Date().toLocaleString().replaceAll('/', '-'),
           taskPreEndTime: null,
           taskEndTime: null,
-          taskPriority: '0',
+          taskPriority: 'default',
           taskUserId: null,
           taskProjectId: selectedProjectId
         };
@@ -182,6 +182,7 @@ export default {
           headers: {
             Authorization: localStorage.getItem("token"),
           },
+          params: { taskId: task.id }
         });
         
         columns.value[columnIndex].tasks.splice(taskIndex, 1);
