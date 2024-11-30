@@ -79,10 +79,10 @@ export default {
 
   methods: {
     addTask() {
-      this.$emit('addTask');
+      this.$emit('addTask', this.columnIndex);
     },
-    deleteTask(index) {
-      this.$emit('deleteTask', index);
+    deleteTask(taskIndex) {
+      this.$emit('deleteTask', this.columnIndex, taskIndex);
     },
     saveTask(task) {
       this.$emit('saveTask', task);
@@ -91,7 +91,6 @@ export default {
       this.$emit('openLink', link);
     },
     handleChange(evt) {
-      console.log('Task moved', evt);
       this.$emit('update:tasks', this.localTasks);
     }
   }

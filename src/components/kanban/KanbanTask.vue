@@ -16,7 +16,7 @@
       size="default"
       circle
       class="delete-button"
-      @click="$emit('delete')"
+      @click="deleteTask"
       text
     >
       <el-icon><Close /></el-icon>
@@ -27,130 +27,91 @@
       <!-- title display -->
       <div class="card-header">
         <!-- edit mode -->
-        <div v-if="isEditingTitle" class="title-edit-mode">
+        <div v-if="isEditing" class="title-edit-mode">
           <el-input
             v-model="editingTitle"
             placeholder="Input Task Title"
             class="task-title-input"
             ref="titleInput"
-            @keyup.enter="saveTitleEdit"
           />
-          <div class="title-edit-buttons">
-            <el-button
-              type="success"
-              size="small"
-              @click="saveTitleEdit"
-              text
-            >
-              <el-icon><CircleCheck /></el-icon>
-            </el-button>
-            <el-button
-              type="info"
-              size="small"
-              @click="cancelTitleEdit"
-              text
-            >
-              <el-icon><CircleClose /></el-icon>
-            </el-button>
-          </div>
+          <el-button
+            type="danger"
+            size="small"
+            @click="clearTitle"
+            text
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         <!-- display mode -->
         <div v-else class="title-display-mode">
           <span class="task-title">{{ task.title }}</span>
-          <el-button
-            type="primary"
-            size="small"
-            @click="startTitleEdit"
-            text
-          >
-            <el-icon><Edit /></el-icon>
-          </el-button>
         </div>
       </div>
     </template>
     
 
     <div class="card-body">
-      <!-- content input -->
-      <div class="list-container">
-        <div v-for="(item, index) in task.listItems" :key="index" class="list-item">
-          <!-- normal display -->
-          <div v-if="!item.isEditing" class="item-content">
-            <span class="list-bullet">•</span>
-            <span class="item-text">{{ item.text }}</span>
-            <div class="item-buttons">
-              <!-- edit button -->
-              <el-button
-                type="primary"
-                size="small"
-                @click="startEdit(index)"
-                text
-              >
-                <el-icon><Edit /></el-icon>
-              </el-button>
-
-              <!-- delete item button -->
-              <el-button
-                type="danger"
-                size="small"
-                @click="removeListItem(index)"
-                text
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-            </div>
-          </div>
-
-          <!-- editing display -->
-          <div v-else class="item-edit">
-            <el-input
-              v-model="item.text"
-              size="small"
-              @keyup.enter="saveEdit(index)"
-            >
-              <template #prefix>
-                <span class="list-bullet">•</span>
-              </template>
-            </el-input>
-            <div class="item-buttons">
-              <!-- save button -->
-              <el-button
-                type="success"
-                size="small"
-                @click="saveEdit(index)"
-                text
-              >
-                <el-icon><CircleCheck /></el-icon>
-              </el-button>
-
-              <!-- cancel button -->
-              <el-button
-                type="info"
-                size="small"
-                @click="cancelEdit(index)"
-                text
-              >
-                <el-icon><CircleClose /></el-icon>
-              </el-button>
-            </div>
-          </div>
+      <div class="description-container">
+        <!-- 编辑模式 -->
+        <div v-if="isEditing" class="description-edit-mode">
+          <el-input
+            type="textarea"
+            v-model="taskDescription"
+            :rows="3"
+            resize="none"
+            placeholder="请输入任务描述"
+          />
+          <el-button
+            type="danger"
+            size="small"
+            @click="clearDescription"
+            text
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         
-        <!-- add item button -->
-        <el-button
-          type="primary"
-          size="small"
-          @click="addListItem"
-          class="add-item-button"
-          :disabled="hasEditingItem"
-          text
-        >
-          <el-icon><Plus /></el-icon>
-          Add Item
-        </el-button>
+        <!-- 显示模式 -->
+        <div v-else class="description-display-mode">
+          <div v-if="task.taskDesc" class="description-content">
+            {{ task.taskDesc }}
+          </div>
+          <div v-else class="description-placeholder">
+            点击编辑按钮添加描述
+          </div>
+        </div>
+      </div>
+
+      <!-- 总编辑按钮区域 -->
+      <div class="edit-controls">
+        <template v-if="isEditing">
+          <el-button
+            type="success"
+            size="small"
+            @click="saveAll"
+          >
+            保存
+          </el-button>
+          <el-button
+            type="info"
+            size="small"
+            @click="cancelEdit"
+          >
+            取消
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button
+            type="primary"
+            size="small"
+            @click="startEdit"
+          >
+            编辑
+          </el-button>
+        </template>
       </div>
     </div>
-
 
     <template #footer>
       <div class="card-footer">
@@ -185,51 +146,29 @@
           <el-dropdown
             trigger="click"
             @command="handleAssigneeChange"
-            class="assignee-dropdown"
+            class="assignee-trigger"
           >
             <div class="assignee-trigger">
               <el-icon><User /></el-icon>
-              <span class="assignee-name">{{ task.assignees?.length ? task.assignees[0].name : 'Not Assigned' }}</span>
-              <span v-if="task.assignees?.length > 1" class="assignee-count">+{{ task.assignees.length - 1 }}</span>
+              <span class="assignee-name">
+                {{ assigneeName || 'Not Assigned' }}
+              </span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <!-- assigned members -->
-                <el-dropdown-item divided disabled>
-                  <div class="assignee-group-title">Assigned Members</div>
-                </el-dropdown-item>
-                
-                <el-dropdown-item 
-                  v-for="user in assignedUsers" 
-                  :key="user.id" 
-                  :command="user.id"
-                >
-                  <div class="assignee-item">
-                    <span>{{ user.name }}</span>
-                    <span class="assignee-role">{{ user.role }}</span>
-                  </div>
-                </el-dropdown-item>
-
-                <!-- available members -->
-                <el-dropdown-item divided disabled>
-                  <div class="assignee-group-title">Available Members</div>
-                </el-dropdown-item>
-
-                <!-- not assigned -->
                 <el-dropdown-item command="unassign">
                   <div class="assignee-item">
                     <span>Not Assigned</span>
                   </div>
                 </el-dropdown-item>
-
+                
                 <el-dropdown-item 
-                  v-for="user in unassignedUsers" 
+                  v-for="user in availableUsers" 
                   :key="user.id" 
                   :command="user.id"
                 >
                   <div class="assignee-item">
                     <span>{{ user.name }}</span>
-                    <span class="assignee-role">{{ user.role }}</span>
                   </div>
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -243,8 +182,8 @@
             v-model="task.duetime"
             type="datetime"
             placeholder="Set Due Time"
-            format="DD-MM-YYYY HH:mm"
-            value-format="DD-MM-YYYY HH:mm"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
             :shortcuts="dateShortcuts"
             @change="handleDuetimeChange"
           />
@@ -255,9 +194,9 @@
 </template>
 
 <script>
-import { Close, Flag, Delete, Plus, Edit, CircleCheck, CircleClose, User, Check } from '@element-plus/icons-vue'
-import dayjs from 'dayjs'
-import axios from 'axios'
+import { Close, Flag, Delete, Plus, Edit, CircleCheck, CircleClose, User, Check } from '@element-plus/icons-vue';
+import dayjs from 'dayjs';
+import axios from "@/axios.js";
 
 export default {
   components: {
@@ -304,16 +243,15 @@ export default {
       ],
       // available users table
       availableUsers: [],
-      isEditingTitle: false,
+      isEditing: false,
       editingTitle: '',
+      taskDescription: '',
       originalTitle: '',
-      clickOutsideHandler: null,
+      originalDescription: '',
+      userList: [], // 存储原始用户数据
     }
   },
   async created() {
-    if (!this.task.listItems) {
-      this.task.listItems = []
-    }
     await this.fetchUsers()
   },
   computed: {
@@ -356,182 +294,119 @@ export default {
         !this.task.assignees.some(assigned => assigned.id === user.id)
       )
     },
-    // add the detector
-    hasEditingItem() {
-      return this.task.listItems.some(item => item.isEditing)
+    // description change detector
+    isDescriptionChanged() {
+      return this.taskDescription !== this.originalDescription
+    },
+    // 修改计算属性
+    availableUsers() {
+      return this.userList
+        .filter(user => user.userRole === 0)
+        .map(user => ({
+          id: user.userId,
+          name: user.userNickname || user.userName
+        }));
+    },
+    
+    assigneeName() {
+      if (!this.task.assignees?.[0]?.id) return null;
+      const assignedUser = this.availableUsers.find(
+        user => user.id === this.task.assignees[0].id
+      );
+      return assignedUser?.name;
     }
   },
   methods: {
     handlepriorityChange(type) {
-      this.task.priority = type
-      this.$emit('save', this.task)
+      this.task.priority = type;
+      this.emitSaveTask();
     },
     handleLinkClick() {
       this.$refs.datePicker.focus()
     },
     handleDuetimeChange() {
-      this.$emit('save', this.task)
+      this.emitSaveTask();
     },
     // normalize the date format
     formatDate(date) {
       return dayjs(date).format('DD-MM-YYYY HH:mm')
-    },
-    // add list item
-    addListItem() {
-      if (this.hasEditingItem) {
-        return
-      }
-      
-      const newItem = {
-        text: '',
-        isEditing: true,
-        isNew: true,
-        originalText: ''
-      }
-      this.task.listItems.push(newItem)
-      
-      // outside listener
-      this.$nextTick(() => {
-        const index = this.task.listItems.length - 1
-        this.setupClickOutsideListener(() => {
-          this.cancelEdit(index)
-          this.removeClickOutsideListener()
-        })
-      })
-    },
-    // start edit
-    startEdit(index) {
-      const item = this.task.listItems[index]
-      item.originalText = item.text
-      item.isEditing = true
-
-      this.removeClickOutsideListener()
-      this.setupClickOutsideListener(() => {
-        if (item.isEditing) {
-          this.cancelEdit(index)
-        }
-      })
-    },
-    // save edit
-    saveEdit(index) {
-      const item = this.task.listItems[index]
-      if (item.text.trim()) {
-        item.isEditing = false
-        item.isNew = false
-        delete item.originalText
-        this.$emit('save', this.task)
-      } else {
-        this.removeListItem(index)
-      }
-      this.removeClickOutsideListener()
-    },
-    // cancel edit
-    cancelEdit(index) {
-      const item = this.task.listItems[index]
-      if (item.isNew) {
-        this.removeListItem(index)
-      } else if (item.isEditing) {
-        item.text = item.originalText
-        item.isEditing = false
-        delete item.originalText
-      }
-      this.removeClickOutsideListener()
-    },
-    // remove item
-    removeListItem(index) {
-      this.task.listItems.splice(index, 1)
-      this.$emit('save', this.task)
     },
     handleAssigneeChange(command) {
       if (command === 'unassign') {
         this.task.assignees = [];
       } else {
         const userId = command;
-        const user = this.availableUsers.find(u => u.id === userId);
-        // 只允许单个指派人
-        this.task.assignees = [user];
+        this.task.assignees = [{ id: userId }];
       }
-      this.$emit('save', this.task);
+      this.emitSaveTask();
     },
-    startTitleEdit() {
-      this.isEditingTitle = true
-      this.editingTitle = this.task.title
-      this.originalTitle = this.task.title
-      
-      // set outside listener
-      this.setupClickOutsideListener(() => {
-        if (this.task.isNew) {
-          this.saveTitleEdit()
-        } else {
-          this.cancelTitleEdit()
-        }
-        this.removeClickOutsideListener()
-      })
-
-      this.$nextTick(() => {
-        this.$refs.titleInput.focus()
-      })
+    startEdit() {
+      this.isEditing = true;
+      this.editingTitle = this.task.title;
+      this.taskDescription = this.task.taskDesc || '';
+      this.originalTitle = this.task.title;
+      this.originalDescription = this.task.taskDesc || '';
     },
-    saveTitleEdit() {
-      const newTitle = this.editingTitle.trim()
-      if (newTitle) {
-        this.task.title = newTitle
-        this.$emit('save', this.task)
-      } else if (this.task.isNew) {
-        this.task.title = `New Task ${this.task.id}`
-        this.$emit('save', this.task)
-      } else {
-        this.editingTitle = this.originalTitle
+    saveAll() {
+      if (this.editingTitle.trim()) {
+        this.task.title = this.editingTitle.trim();
+        this.task.taskDesc = this.taskDescription;
+        this.isEditing = false;
+        this.emitSaveTask();
       }
-      this.isEditingTitle = false
-      this.task.isNew = false
-      this.removeClickOutsideListener()
     },
-    cancelTitleEdit() {
-      if (this.task.isNew) {
-        this.saveTitleEdit()
-      } else {
-        this.isEditingTitle = false
-        this.editingTitle = this.originalTitle
-      }
-      this.removeClickOutsideListener()
+    cancelEdit() {
+      this.editingTitle = this.originalTitle;
+      this.taskDescription = this.originalDescription;
+      this.isEditing = false;
     },
-    setupClickOutsideListener(callback) {
-      this.removeClickOutsideListener()
-      
-      this.clickOutsideHandler = (event) => {
-        const cardEl = this.$el
-        if (!cardEl.contains(event.target) && 
-            !event.target.closest('.el-dropdown-menu') &&
-            !event.target.closest('.el-picker-panel')) {
-          callback()
-        }
-      }
-      document.addEventListener('mousedown', this.clickOutsideHandler)
+    clearTitle() {
+      this.editingTitle = '';
     },
-    removeClickOutsideListener() {
-      if (this.clickOutsideHandler) {
-        document.removeEventListener('mousedown', this.clickOutsideHandler)
-        this.clickOutsideHandler = null
-      }
+    clearDescription() {
+      this.taskDescription = '';
     },
     async fetchUsers() {
       try {
-        const response = await axios.get('/user/getAll')
-        this.availableUsers = response.data.map(user => ({
-          id: user.id,
-          name: user.name || user.nickname,
-          role: user.role
-        }))
+        const response = await axios.get('/user/getAll', {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        console.log("fetchUsers", response.data.data.records);
+        this.userList = response.data.data.records;
       } catch (error) {
-        console.error('获取用户列表失败:', error)
-        ElMessage.error('获取用户列表失败')
+        console.error('获取用户列表失败:', error);
+        ElMessage.error('获取用户列表失败');
       }
+    },
+    emitSaveTask() {
+      const updatedTask = {
+        ...this.task,
+        title: this.task.title,
+        taskDesc: this.task.taskDesc,
+        priority: this.task.priority,
+        duetime: this.task.duetime,
+        assignees: this.task.assignees,
+        status: this.task.status
+      };
+      this.$emit('save', updatedTask);
+    },
+    deleteTask() {
+      this.$confirm('确认删除该任务吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.$emit('delete');
+      }).catch(() => {
+        // 取消删除操作
+      });
     }
   },
   mounted() {
     if (this.task.isNew) {
-      this.startTitleEdit()
+      this.startEdit();
     }
   },
   beforeDestroy() {
@@ -560,8 +435,8 @@ export default {
 .task-title-input :deep(.el-input__wrapper):hover,
 .task-title-input :deep(.el-input__wrapper.is-focus) { border: none; box-shadow: none; }
 .title-display-mode { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 5px 0; }
-.title-edit-mode { display: flex; align-items: center; width: 100%; gap: 8px; }
-.title-edit-buttons { display: flex; gap: 4px; }
+.title-edit-mode { position: relative; width: 100%; }
+.title-edit-mode .el-button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 
 /* delete task button */
 .delete-button { position: absolute; top: 8px; right: 8px; z-index: 1; transition: all 0.3s; }
@@ -580,18 +455,6 @@ export default {
 .priority-option--normal { color: #67C23A; }
 .priority-option--warning { color: #E6A23C; }
 .priority-option--danger { color: #F56C6C; }
-
-/* list item styles */
-.list-item { margin-bottom: 8px; align-self: flex-start;}
-.item-content, .item-edit { display: flex; align-items: center; padding: 4px 8px; background-color: #f5f7fa; border-radius: 4px; }
-.item-text { flex: 1; margin-left: 5px; }
-.item-buttons { display: flex; }
-.list-bullet { color: #909399; margin-right: 5px; }
-.add-item-button { margin-top: 10px; width: 100%; justify-content: center; }
-.item-edit :deep(.el-input) { flex: 1; margin-right: 8px; }
-.item-buttons .el-button { transition: all 0.3s ease; }
-.item-buttons .el-button:hover { transform: scale(1.1); }
-.item-buttons :deep(.el-icon) { font-size: 14px; }
 
 /* footer icons row */
 .footer-icons { display: flex; align-items: center; gap: 16px; }
@@ -614,4 +477,110 @@ export default {
 
 /* disabled */
 .add-item-button.is-disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* 文本框容器样式 */
+.text-area-container {
+  width: 100%;
+  margin: 10px 0;
+}
+
+/* 按钮容器样式 */
+.text-area-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 文本框样式 */
+.text-area-container :deep(.el-textarea__inner) {
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+/* 按钮悬停效果 */
+.text-area-buttons .el-button:hover {
+  transform: scale(1.1);
+}
+
+.description-container {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.description-edit-mode {
+  position: relative;
+}
+
+.description-edit-mode .el-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+}
+
+.description-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.description-display-mode {
+  padding: 8px;
+  min-height: 60px;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+
+.description-display-mode:hover {
+  border-color: var(--el-color-primary);
+}
+
+.description-content {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.description-placeholder {
+  color: var(--el-text-color-placeholder);
+}
+
+.description-display-mode .el-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: none;
+}
+
+.description-display-mode:hover .el-button {
+  display: inline-flex;
+}
+
+/* 添加新的样式 */
+.edit-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* 移除不需要的样式 */
+.assignee-role,
+.assignee-count,
+.assignee-group-title { 
+  display: none; 
+}
+
+/* 简化下拉菜单样式 */
+.assignee-dropdown :deep(.el-dropdown-menu) { 
+  min-width: 160px; 
+}
+
+.assignee-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+}
 </style>
