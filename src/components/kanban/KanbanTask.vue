@@ -16,7 +16,7 @@
       size="default"
       circle
       class="delete-button"
-      @click="$emit('delete')"
+      @click="deleteTask"
       text
     >
       <el-icon><Close /></el-icon>
@@ -27,130 +27,91 @@
       <!-- title display -->
       <div class="card-header">
         <!-- edit mode -->
-        <div v-if="isEditingTitle" class="title-edit-mode">
+        <div v-if="isEditing" class="title-edit-mode">
           <el-input
             v-model="editingTitle"
             placeholder="Input Task Title"
             class="task-title-input"
             ref="titleInput"
-            @keyup.enter="saveTitleEdit"
           />
-          <div class="title-edit-buttons">
-            <el-button
-              type="success"
-              size="small"
-              @click="saveTitleEdit"
-              text
-            >
-              <el-icon><CircleCheck /></el-icon>
-            </el-button>
-            <el-button
-              type="info"
-              size="small"
-              @click="cancelTitleEdit"
-              text
-            >
-              <el-icon><CircleClose /></el-icon>
-            </el-button>
-          </div>
+          <el-button
+            type="danger"
+            size="small"
+            @click="clearTitle"
+            text
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         <!-- display mode -->
         <div v-else class="title-display-mode">
           <span class="task-title">{{ task.title }}</span>
-          <el-button
-            type="primary"
-            size="small"
-            @click="startTitleEdit"
-            text
-          >
-            <el-icon><Edit /></el-icon>
-          </el-button>
         </div>
       </div>
     </template>
     
 
     <div class="card-body">
-      <!-- content input -->
-      <div class="list-container">
-        <div v-for="(item, index) in task.listItems" :key="index" class="list-item">
-          <!-- normal display -->
-          <div v-if="!item.isEditing" class="item-content">
-            <span class="list-bullet">•</span>
-            <span class="item-text">{{ item.text }}</span>
-            <div class="item-buttons">
-              <!-- edit button -->
-              <el-button
-                type="primary"
-                size="small"
-                @click="startEdit(index)"
-                text
-              >
-                <el-icon><Edit /></el-icon>
-              </el-button>
-
-              <!-- delete item button -->
-              <el-button
-                type="danger"
-                size="small"
-                @click="removeListItem(index)"
-                text
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-            </div>
-          </div>
-
-          <!-- editing display -->
-          <div v-else class="item-edit">
-            <el-input
-              v-model="item.text"
-              size="small"
-              @keyup.enter="saveEdit(index)"
-            >
-              <template #prefix>
-                <span class="list-bullet">•</span>
-              </template>
-            </el-input>
-            <div class="item-buttons">
-              <!-- save button -->
-              <el-button
-                type="success"
-                size="small"
-                @click="saveEdit(index)"
-                text
-              >
-                <el-icon><CircleCheck /></el-icon>
-              </el-button>
-
-              <!-- cancel button -->
-              <el-button
-                type="info"
-                size="small"
-                @click="cancelEdit(index)"
-                text
-              >
-                <el-icon><CircleClose /></el-icon>
-              </el-button>
-            </div>
-          </div>
+      <div class="description-container">
+        <!-- edit mode -->
+        <div v-if="isEditing" class="description-edit-mode">
+          <el-input
+            type="textarea"
+            v-model="taskDescription"
+            :rows="3"
+            resize="none"
+            placeholder="Input Task Description"
+          />
+          <el-button
+            type="danger"
+            size="small"
+            @click="clearDescription"
+            text
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         
-        <!-- add item button -->
-        <el-button
-          type="primary"
-          size="small"
-          @click="addListItem"
-          class="add-item-button"
-          :disabled="hasEditingItem"
-          text
-        >
-          <el-icon><Plus /></el-icon>
-          Add Item
-        </el-button>
+        <!-- display mode -->
+        <div v-else class="description-display-mode">
+          <div v-if="task.taskDesc" class="description-content">
+            {{ task.taskDesc }}
+          </div>
+          <div v-else class="description-placeholder">
+            Click Edit to Add Description
+          </div>
+        </div>
+      </div>
+
+      <!-- edit button -->
+      <div class="edit-controls">
+        <template v-if="isEditing">
+          <el-button
+            type="success"
+            size="small"
+            @click="saveAll"
+          >
+            Save
+          </el-button>
+          <el-button
+            type="info"
+            size="small"
+            @click="cancelEdit"
+          >
+            Cancel
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button
+            type="primary"
+            size="small"
+            @click="startEdit"
+          >
+            Edit
+          </el-button>
+        </template>
       </div>
     </div>
-
 
     <template #footer>
       <div class="card-footer">
@@ -185,51 +146,29 @@
           <el-dropdown
             trigger="click"
             @command="handleAssigneeChange"
-            class="assignee-dropdown"
+            class="assignee-trigger"
           >
             <div class="assignee-trigger">
               <el-icon><User /></el-icon>
-              <span class="assignee-name">{{ task.assignees?.length ? task.assignees[0].name : 'Not Assigned' }}</span>
-              <span v-if="task.assignees?.length > 1" class="assignee-count">+{{ task.assignees.length - 1 }}</span>
+              <span class="assignee-name">
+                {{ assigneeName || 'Not Assigned' }}
+              </span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <!-- assigned members -->
-                <el-dropdown-item divided disabled>
-                  <div class="assignee-group-title">Assigned Members</div>
-                </el-dropdown-item>
-                
-                <el-dropdown-item 
-                  v-for="user in assignedUsers" 
-                  :key="user.id" 
-                  :command="user.id"
-                >
-                  <div class="assignee-item">
-                    <span>{{ user.name }}</span>
-                    <span class="assignee-role">{{ user.role }}</span>
-                  </div>
-                </el-dropdown-item>
-
-                <!-- available members -->
-                <el-dropdown-item divided disabled>
-                  <div class="assignee-group-title">Available Members</div>
-                </el-dropdown-item>
-
-                <!-- not assigned -->
-                <el-dropdown-item command="unassign">
+                <el-dropdown-item command="">
                   <div class="assignee-item">
                     <span>Not Assigned</span>
                   </div>
                 </el-dropdown-item>
-
+                
                 <el-dropdown-item 
-                  v-for="user in unassignedUsers" 
-                  :key="user.id" 
-                  :command="user.id"
+                  v-for="user in availableUsers" 
+                  :key="user.userId" 
+                  :command="user.userId"
                 >
                   <div class="assignee-item">
-                    <span>{{ user.name }}</span>
-                    <span class="assignee-role">{{ user.role }}</span>
+                    <span>{{ user.userNickname || user.userName }}</span>
                   </div>
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -243,8 +182,8 @@
             v-model="task.duetime"
             type="datetime"
             placeholder="Set Due Time"
-            format="DD-MM-YYYY HH:mm"
-            value-format="DD-MM-YYYY HH:mm"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
             :shortcuts="dateShortcuts"
             @change="handleDuetimeChange"
           />
@@ -255,8 +194,9 @@
 </template>
 
 <script>
-import { Close, Flag, Delete, Plus, Edit, CircleCheck, CircleClose, User, Check } from '@element-plus/icons-vue'
-import dayjs from 'dayjs'
+import { Close, Flag, Delete, Plus, User, Check } from '@element-plus/icons-vue';
+import dayjs from 'dayjs';
+import axios from "@/axios.js";
 
 export default {
   components: {
@@ -264,9 +204,6 @@ export default {
     Flag,
     Delete,
     Plus,
-    Edit,
-    CircleCheck,
-    CircleClose,
     User,
     Check
   },
@@ -302,23 +239,17 @@ export default {
         }
       ],
       // available users table
-      availableUsers: [
-        { id: 1, name: 'Alice', role: 'Develop' },
-        { id: 2, name: 'Bob', role: 'Test' },
-        { id: 3, name: 'Carlie', role: 'Product' },
-        { id: 4, name: 'David', role: 'Design' },
-        { id: 5, name: 'Eve', role: 'Develop' }
-      ],
-      isEditingTitle: false,
+      availableUsers: [],
+      isEditing: false,
       editingTitle: '',
+      taskDescription: '',
       originalTitle: '',
-      clickOutsideHandler: null,
+      originalDescription: '',
+      userList: [],
     }
   },
-  created() {
-    if (!this.task.listItems) {
-      this.task.listItems = []
-    }
+  async created() {
+    await this.fetchUsers()
   },
   computed: {
     // task class choice
@@ -348,8 +279,9 @@ export default {
     },
     // assigned users
     assignedUsers() {
-      if (!this.task.assignees) return []
-      return this.task.assignees
+      if (!this.task.assignees?.length) return [];
+      const assignedUser = this.availableUsers.find(u => u.id === this.task.assignees[0].id);
+      return assignedUser ? [assignedUser] : [];
     },
     // unassigned users
     unassignedUsers() {
@@ -358,176 +290,112 @@ export default {
         !this.task.assignees.some(assigned => assigned.id === user.id)
       )
     },
-    // add the detector
-    hasEditingItem() {
-      return this.task.listItems.some(item => item.isEditing)
+    // description change detector
+    isDescriptionChanged() {
+      return this.taskDescription !== this.originalDescription
+    },
+    availableUsers() {
+      return this.userList.filter(user => user.userRole === 0);
+    },
+    
+    assigneeName() {
+      if (!this.task.assignees?.[0]?.id) return null;
+      const assignedUser = this.userList.find(
+        user => user.userId === this.task.assignees[0].id
+      );
+      return assignedUser ? (assignedUser.userNickname || assignedUser.userName) : null;
     }
   },
   methods: {
     handlepriorityChange(type) {
-      this.task.priority = type
-      this.$emit('save', this.task)
+      this.task.priority = type;
+      this.emitSaveTask();
     },
     handleLinkClick() {
       this.$refs.datePicker.focus()
     },
     handleDuetimeChange() {
-      this.$emit('save', this.task)
+      this.emitSaveTask();
     },
     // normalize the date format
     formatDate(date) {
-      return dayjs(date).format('DD-MM-YYYY HH:mm')
+      return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
     },
-    // add list item
-    addListItem() {
-      if (this.hasEditingItem) {
-        return
-      }
-      
-      const newItem = {
-        text: '',
-        isEditing: true,
-        isNew: true,
-        originalText: ''
-      }
-      this.task.listItems.push(newItem)
-      
-      // outside listener
-      this.$nextTick(() => {
-        const index = this.task.listItems.length - 1
-        this.setupClickOutsideListener(() => {
-          this.cancelEdit(index)
-          this.removeClickOutsideListener()
-        })
-      })
-    },
-    // start edit
-    startEdit(index) {
-      const item = this.task.listItems[index]
-      item.originalText = item.text
-      item.isEditing = true
-
-      this.removeClickOutsideListener()
-      this.setupClickOutsideListener(() => {
-        if (item.isEditing) {
-          this.cancelEdit(index)
-        }
-      })
-    },
-    // save edit
-    saveEdit(index) {
-      const item = this.task.listItems[index]
-      if (item.text.trim()) {
-        item.isEditing = false
-        item.isNew = false
-        delete item.originalText
-        this.$emit('save', this.task)
+    handleAssigneeChange(userId) {
+      if (!userId) {
+        this.task.assignees = [];
       } else {
-        this.removeListItem(index)
+        this.task.assignees = [{ id: userId }];
       }
-      this.removeClickOutsideListener()
+      this.emitSaveTask();
     },
-    // cancel edit
-    cancelEdit(index) {
-      const item = this.task.listItems[index]
-      if (item.isNew) {
-        this.removeListItem(index)
-      } else if (item.isEditing) {
-        item.text = item.originalText
-        item.isEditing = false
-        delete item.originalText
+    startEdit() {
+      this.isEditing = true;
+      this.editingTitle = this.task.title;
+      this.taskDescription = this.task.taskDesc || '';
+      this.originalTitle = this.task.title;
+      this.originalDescription = this.task.taskDesc || '';
+    },
+    saveAll() {
+      if (this.editingTitle.trim()) {
+        this.task.title = this.editingTitle.trim();
+        this.task.taskDesc = this.taskDescription;
+        this.isEditing = false;
+        this.emitSaveTask();
       }
-      this.removeClickOutsideListener()
     },
-    // remove item
-    removeListItem(index) {
-      this.task.listItems.splice(index, 1)
-      this.$emit('save', this.task)
+    cancelEdit() {
+      this.editingTitle = this.originalTitle;
+      this.taskDescription = this.originalDescription;
+      this.isEditing = false;
     },
-    handleAssigneeChange(command) {
-      if (command === 'unassign') {
-        this.task.assignees = []
-      } else {
-        const userId = command
-        const user = this.availableUsers.find(u => u.id === userId)
-        if (!this.task.assignees) {
-          this.task.assignees = []
+    clearTitle() {
+      this.editingTitle = '';
+    },
+    clearDescription() {
+      this.taskDescription = '';
+    },
+    async fetchUsers() {
+      try {
+        const response = await axios.get('/user/getAllUsers', {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        if (response.data.data) {
+          this.userList = response.data.data;
         }
-        const existingIndex = this.task.assignees.findIndex(a => a.id === userId)
-        if (existingIndex >= 0) {
-          this.task.assignees.splice(existingIndex, 1)
-        } else {
-          this.task.assignees.push(user)
-        }
+      } catch (error) {
+        console.error('Failed to obtain user list:', error);
+        ElMessage.error('Failed to Obtain User List');
       }
-      this.$emit('save', this.task)
     },
-    startTitleEdit() {
-      this.isEditingTitle = true
-      this.editingTitle = this.task.title
-      this.originalTitle = this.task.title
-      
-      // set outside listener
-      this.setupClickOutsideListener(() => {
-        if (this.task.isNew) {
-          this.saveTitleEdit()
-        } else {
-          this.cancelTitleEdit()
-        }
-        this.removeClickOutsideListener()
-      })
-
-      this.$nextTick(() => {
-        this.$refs.titleInput.focus()
-      })
+    emitSaveTask() {
+      const updatedTask = {
+        ...this.task,
+        title: this.task.title,
+        taskDesc: this.task.taskDesc,
+        priority: this.task.priority,
+        duetime: this.task.duetime,
+        assignees: this.task.assignees,
+        status: this.task.status
+      };
+      this.$emit('save', updatedTask);
     },
-    saveTitleEdit() {
-      const newTitle = this.editingTitle.trim()
-      if (newTitle) {
-        this.task.title = newTitle
-        this.$emit('save', this.task)
-      } else if (this.task.isNew) {
-        this.task.title = `New Task ${this.task.id}`
-        this.$emit('save', this.task)
-      } else {
-        this.editingTitle = this.originalTitle
-      }
-      this.isEditingTitle = false
-      this.task.isNew = false
-      this.removeClickOutsideListener()
-    },
-    cancelTitleEdit() {
-      if (this.task.isNew) {
-        this.saveTitleEdit()
-      } else {
-        this.isEditingTitle = false
-        this.editingTitle = this.originalTitle
-      }
-      this.removeClickOutsideListener()
-    },
-    setupClickOutsideListener(callback) {
-      this.removeClickOutsideListener()
-      
-      this.clickOutsideHandler = (event) => {
-        const cardEl = this.$el
-        if (!cardEl.contains(event.target) && 
-            !event.target.closest('.el-dropdown-menu') &&
-            !event.target.closest('.el-picker-panel')) {
-          callback()
-        }
-      }
-      document.addEventListener('mousedown', this.clickOutsideHandler)
-    },
-    removeClickOutsideListener() {
-      if (this.clickOutsideHandler) {
-        document.removeEventListener('mousedown', this.clickOutsideHandler)
-        this.clickOutsideHandler = null
-      }
+    deleteTask() {
+      this.$confirm('Are you sure you want to delete this task?', 'Attention', {
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No',
+        type: 'warning'
+      }).then(() => {
+        this.$emit('delete', this.task.id);
+      }).catch(() => {
+      });
     }
   },
   mounted() {
     if (this.task.isNew) {
-      this.startTitleEdit()
+      this.startEdit();
     }
   },
   beforeDestroy() {
@@ -556,8 +424,8 @@ export default {
 .task-title-input :deep(.el-input__wrapper):hover,
 .task-title-input :deep(.el-input__wrapper.is-focus) { border: none; box-shadow: none; }
 .title-display-mode { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 5px 0; }
-.title-edit-mode { display: flex; align-items: center; width: 100%; gap: 8px; }
-.title-edit-buttons { display: flex; gap: 4px; }
+.title-edit-mode { position: relative; width: 100%; }
+.title-edit-mode .el-button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 
 /* delete task button */
 .delete-button { position: absolute; top: 8px; right: 8px; z-index: 1; transition: all 0.3s; }
@@ -577,18 +445,6 @@ export default {
 .priority-option--warning { color: #E6A23C; }
 .priority-option--danger { color: #F56C6C; }
 
-/* list item styles */
-.list-item { margin-bottom: 8px; align-self: flex-start;}
-.item-content, .item-edit { display: flex; align-items: center; padding: 4px 8px; background-color: #f5f7fa; border-radius: 4px; }
-.item-text { flex: 1; margin-left: 5px; }
-.item-buttons { display: flex; }
-.list-bullet { color: #909399; margin-right: 5px; }
-.add-item-button { margin-top: 10px; width: 100%; justify-content: center; }
-.item-edit :deep(.el-input) { flex: 1; margin-right: 8px; }
-.item-buttons .el-button { transition: all 0.3s ease; }
-.item-buttons .el-button:hover { transform: scale(1.1); }
-.item-buttons :deep(.el-icon) { font-size: 14px; }
-
 /* footer icons row */
 .footer-icons { display: flex; align-items: center; gap: 16px; }
 
@@ -600,14 +456,112 @@ export default {
 .assignee-trigger:hover .assignee-count { color: #409EFF; }
 .assignee-trigger .el-icon { font-size: 16px; color: #606266; transition: all 0.3s ease; }
 .assignee-name { font-size: 14px; color: #606266; transition: color 0.3s ease; }
-.assignee-count { font-size: 12px; color: #909399; transition: color 0.3s ease; }
-.assignee-role { font-size: 12px; color: #909399; position: relative; padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* assignee dropdown menu */
-.assignee-group-title { font-size: 12px; color: #909399; padding: 0 12px; }
 .assignee-dropdown :deep(.el-dropdown-menu) { min-width: 160px; }
 .assignee-dropdown :deep(.el-dropdown-menu__item.is-disabled) { background-color: #f5f7fa; padding: 5px 0; }
 
 /* disabled */
 .add-item-button.is-disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Textbox container */
+.text-area-container {
+  width: 100%;
+  margin: 10px 0;
+}
+
+/* Button container */
+.text-area-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Textbox */
+.text-area-container :deep(.el-textarea__inner) {
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.text-area-buttons .el-button:hover {
+  transform: scale(1.1);
+}
+
+.description-container {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.description-edit-mode {
+  position: relative;
+}
+
+.description-edit-mode .el-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+}
+
+.description-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.description-display-mode {
+  padding: 8px;
+  min-height: 60px;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+
+.description-display-mode:hover {
+  border-color: var(--el-color-primary);
+}
+
+.description-content {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.description-placeholder {
+  color: var(--el-text-color-placeholder);
+}
+
+.description-display-mode .el-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: none;
+}
+
+.description-display-mode:hover .el-button {
+  display: inline-flex;
+}
+
+.edit-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* dropdown menu */
+.assignee-dropdown :deep(.el-dropdown-menu) { 
+  min-width: 160px; 
+}
+
+.assignee-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.assignee-item:hover {
+  background-color: var(--el-dropdown-menuItem-hover-fill);
+  color: var(--el-dropdown-menuItem-hover-color);
+}
 </style>

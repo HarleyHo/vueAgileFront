@@ -10,83 +10,194 @@
 -->
 <template>
   <div class="kanban-board">
-    <!-- use draggable to drag the columns -->
-    <draggable
-      v-model="columns"
-      :component-data="{ type: 'transition-group' }"
-      item-key="title"
-      class="kanban-columns"
-      :group="{ name: 'columns' }"
-    >
-      <template #item="{ element: column, index: colIndex }">
-        <KanbanColumn
-          :key="colIndex"
-          :title="column.title"
-          v-model:tasks="column.tasks"
-          :column-index="colIndex"
-          @addTask="addTask(colIndex)"
-          @deleteTask="deleteTask(colIndex, $event)"
-          @saveTask="saveTask"
-          @openLink="openLink"
-          @update:tasks="handleTasksUpdate(colIndex, $event)"
-        />
-      </template>
-    </draggable>
+    <div class="kanban-columns">
+      <KanbanColumn
+        v-for="(column, colIndex) in columns"
+        :key="column.title"
+        :title="column.title"
+        v-model:tasks="column.tasks"
+        :column-index="colIndex"
+        @addTask="addTask"
+        @deleteTask="deleteTask"
+        @saveTask="updateTask"
+        @update:tasks="handleTasksStatus(colIndex, $event)"
+      />
+    </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
-import draggable from 'vuedraggable';
+import axios from "@/axios.js";
+import { ElMessage } from 'element-plus';
 
 export default {
-  components: { KanbanColumn, draggable },
+  components: { KanbanColumn },
   setup() {
     const columns = ref([
-      { title: 'To Do', tasks: [] },
-      { title: 'In Progress', tasks: [] },
-      { title: 'Done', tasks: [] }
+      { title: 'To Do', tasks: [], status: '0' },
+      { title: 'In Progress', tasks: [], status: '1' },
+      { title: 'Done', tasks: [], status: '2' }
     ]);
 
-    const handleTasksUpdate = (columnIndex, newTasks) => {
-      columns.value[columnIndex].tasks = newTasks;
-      console.log('Column tasks updated:', {
-        columnIndex,
-        newTasks,
-        allColumns: columns.value
-      });
-    };
+    const selectedProjectId = localStorage.getItem('selectedProjectId');
+    // Obtain task list from backend and fetch to frontend
+    const fetchTasks = async () => {
+      try {
+        const response = await axios.get(`/project/${selectedProjectId}/task`, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        const tasks = response.data.data.tasks;
 
-    const addTask = (columnIndex) => {
-      const newId = Math.max(...columns.value.flatMap(col => col.tasks.map(task => task.id)), 0) + 1;
-      const newTask = {
-        id: newId,
-        title: `New Task ${newId}`,
-        content: '',
-        isNew: true,
-        listItems: []
-      };
-      columns.value[columnIndex].tasks.push(newTask);
-    };
-
-    const deleteTask = (columnIndex, taskIndex) => {
-      columns.value[columnIndex].tasks.splice(taskIndex, 1);
-    };
-
-    const saveTask = (task) => {
-      console.log('Task saved', task);
-      if (task.isNew) {
-        task.isNew = false;
+        columns.value.forEach(column => column.tasks = []);
+        
+        tasks.forEach(task => {
+          const column = columns.value.find(col => col.status === task.taskStatus.toString());
+          if (column) {
+            column.tasks.push(transformTaskFromBackend(task));
+          }
+        });
+      } catch (error) {
+        console.error('Failed to obtain task:', error);
+        ElMessage.error('Failed to Obtain Task List');
       }
     };
 
-    const openLink = (link) => {
-      const vscode = acquireVsCodeApi();
-      vscode.postMessage({ command: 'openFile', path: link });
+    const transformTaskFromBackend = (backendTask) => ({
+      id: backendTask.taskId,
+      title: backendTask.taskTitle,
+      taskDesc: backendTask.taskDesc || '',
+      assignees: backendTask.taskUserId ? [{ id: backendTask.taskUserId }] : [],
+      priority: backendTask.taskPriority || 'default',
+      duetime: backendTask.taskPreEndTime,
+      status: backendTask.taskStatus.toString()
+    });
+
+    const transformTaskToBackend = (frontendTask) => ({
+      taskId: frontendTask.id,
+      taskTitle: frontendTask.title,
+      taskDesc: frontendTask.taskDesc || '',
+      taskUserId: frontendTask.assignees?.[0]?.id || null,
+      taskStatus: frontendTask.status,
+      taskPriority: frontendTask.priority || 'default',
+      taskPreEndTime: frontendTask.duetime,
+      taskEndTime: frontendTask.status === '2' ? new Date().toLocaleString().replaceAll('/', '-') : null,
+      taskProjectId: selectedProjectId
+    });
+
+    // Update task status
+    const handleTasksStatus = async (columnIndex, newTasks) => {
+      const status = columns.value[columnIndex].status;
+      
+      try {
+        // Check if the task status has changed
+        for (const task of newTasks) {
+          if (task.status !== status) {
+            // Update task status
+            const updatedTask = { ...task, status };
+            await updateTask(updatedTask);
+          }
+        }
+        
+        // Update the task list in the column
+        columns.value[columnIndex].tasks = newTasks;
+      } catch (error) {
+        console.error('Failed to update task status:', error);
+        ElMessage.error('Failed to Update Task Status');
+        // If the update fails, refresh the task list
+        await fetchTasks();
+      }
     };
 
-    return { columns, addTask, deleteTask, saveTask, openLink, handleTasksUpdate };
+    const addTask = async (columnIndex) => {
+      try {
+        const newTask = {
+          taskTitle: 'New Task ',
+          taskDesc: '',
+          taskStatus: columns.value[columnIndex].status,
+          taskStartTime: new Date().toLocaleString().replaceAll('/', '-'),
+          taskPreEndTime: null,
+          taskEndTime: null,
+          taskPriority: 'default',
+          taskUserId: null,
+          taskProjectId: selectedProjectId
+        };
+        
+        const response = await axios.post('/task', newTask, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        // After creating the task, fetch the task list from the backend
+        await fetchTasks();
+        ElMessage.success('Create Task Successfully');
+      } catch (error) {
+        console.error('Failed to create task:', error);
+        ElMessage.error('Failed to Create Task');
+      }
+    };
+
+    const updateTask = async (task) => {
+      try {
+        console.log("updateTask", task);
+        const backendTask = transformTaskToBackend(task);
+        
+        await axios.put(`/task/${task.id}`, backendTask, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        });
+        
+        ElMessage.success('Update Task Successfully');
+        
+        // Update local data
+        const columnIndex = columns.value.findIndex(col => col.status === task.status);
+        if (columnIndex !== -1) {
+          const taskIndex = columns.value[columnIndex].tasks.findIndex(t => t.id === task.id);
+          if (taskIndex !== -1) {
+            columns.value[columnIndex].tasks[taskIndex] = { ...task };
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update task:', error);
+        ElMessage.error('Failed to Update Task');
+        await fetchTasks();  // Refresh the task list
+      }
+    };
+
+    const deleteTask = async (columnIndex, taskIndex) => {
+      const task = columns.value[columnIndex].tasks[taskIndex];
+      try {
+        await axios.delete(`/task/${task.id}`, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+          params: { taskId: task.id }
+        });
+        
+        columns.value[columnIndex].tasks.splice(taskIndex, 1);
+        ElMessage.success('Delete Task Successfully');
+      } catch (error) {
+        console.error('Failed to delete task:', error);
+        ElMessage.error('Failed to Delete Task');
+        await fetchTasks();
+      }
+    };
+
+    onMounted(() => {
+      fetchTasks();
+    });
+
+    return { 
+      columns, 
+      addTask, 
+      deleteTask, 
+      updateTask, 
+      handleTasksStatus 
+    };
   }
 };
 </script>

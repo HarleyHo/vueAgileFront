@@ -29,9 +29,8 @@
           <KanbanTask
             :task="task"
             :is-new="task.isNew"
-            @delete="deleteTask($event)"
+            @delete="deleteTask(task.id)"
             @save="saveTask"
-            @openLink="openLink"
           />
         </template>
       </draggable>
@@ -64,7 +63,7 @@ export default {
     Plus
   },
   props: ['title', 'tasks', 'columnIndex'],
-  emits: ['update:tasks', 'addTask', 'deleteTask', 'saveTask', 'openLink'],
+  emits: ['update:tasks', 'addTask', 'deleteTask', 'saveTask'],
 
   computed: {
     localTasks: {
@@ -79,19 +78,18 @@ export default {
 
   methods: {
     addTask() {
-      this.$emit('addTask');
+      this.$emit('addTask', this.columnIndex);
     },
-    deleteTask(index) {
-      this.$emit('deleteTask', index);
+    deleteTask(taskId) {
+      const taskIndex = this.localTasks.findIndex(task => task.id === taskId);
+      if (taskIndex !== -1) {
+        this.$emit('deleteTask', this.columnIndex, taskIndex);
+      }
     },
     saveTask(task) {
       this.$emit('saveTask', task);
     },
-    openLink(link) {
-      this.$emit('openLink', link);
-    },
     handleChange(evt) {
-      console.log('Task moved', evt);
       this.$emit('update:tasks', this.localTasks);
     }
   }
